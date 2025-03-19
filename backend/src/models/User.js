@@ -25,4 +25,4 @@ const userSchema = new Schema({
     strict: true, // Mejor mantenerlo en true por seguridad
 });
 
-module.exports = mongoose.model("Users", userSchema, "Users");
+export default model("Users", userSchema, "Users");

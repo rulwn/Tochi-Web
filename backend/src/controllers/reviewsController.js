@@ -1,5 +1,6 @@
 import Review from '../models/Reviews.js'
 import Product from '../models/Products.js'
+import User from '../models/User.js'
 
 const reviewController = {}
 
