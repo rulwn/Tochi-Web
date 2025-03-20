@@ -1,8 +1,6 @@
 import { Schema, model } from "mongoose";
-
-
 const cartProductSchema = new Schema({
-    productId: {
+    idProduct: {
         type: Schema.Types.ObjectId,
         ref: "Product",
         required: true
@@ -19,29 +17,26 @@ const cartProductSchema = new Schema({
     }
 });
 
-
 const cartSchema = new Schema({
-    userId: {
+    idClient: { 
         type: Schema.Types.ObjectId,
         ref: "User", 
         required: true
     },
-    products: [cartProductSchema], 
+    Products: [cartProductSchema], 
     total: {
         type: Number,
         required: true,
         min: 0
     },
-    status: {
+    state: {  
         type: String,
         enum: ["Pendiente", "Confirmado", "Cancelado"], 
         default: "Pendiente"
     }
 }, {
-    timestamps:true,
-    strict:false
-}); 
+    timestamps: true
+});
 
 const Cart = model("Cart", cartSchema, "Cart");
-
 export default Cart;
