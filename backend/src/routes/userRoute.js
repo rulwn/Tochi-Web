@@ -2,9 +2,9 @@ import express from 'express';
 import userController from '../controllers/userController.js';
 const router = express.Router();
 router.route('/')
-    .get(userController.getProducts)
-    .post(userController.createProduct);
+    .get(userController.getUsers)
+    .post(userController.createUser);
 router.route('/:id')
-    .put(userController.updateProduct)
-    .delete(userController.deleteProduct);
+    .put(userController.updateUser)
+    .delete(userController.deleteUser);
 export default router;
