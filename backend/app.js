@@ -5,6 +5,8 @@ import routeCart from './src/routes/cartRoute.js';
 import routCategories from './src/routes/categoriesRoute.js'
 import routOrder from './src/routes/orderRoute.js'
 import routeUser from './src/routes/userRoute.js';
+import routeLog from './src/routes/logRoute.js';
+import routeTochiireg from './src/routes/regtochiiRoute.js';
 
 
 const app = express();
@@ -15,5 +17,7 @@ app.use("/api/cart",routeCart);
 app.use('/api/categories', routCategories);
 app.use('/api/order', routOrder)
 app.use('/api/users', routeUser);
+app.use('/api/login',routeLog );
+app.use('/api/register', routeTochiireg);
 
 export default app;
