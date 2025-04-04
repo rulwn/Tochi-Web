@@ -3,7 +3,7 @@ import bcryptjs from "bcryptjs";
 import jsonwebtoken from "jsonwebtoken";
 import User from "../models/User.js";
 
-dotenv.config(); // Cargar variables de entorno
+dotenv.config();
 
 const loginController = {};
 
@@ -15,15 +15,12 @@ loginController.login = async (req, res) => {
     if (!userFound) {
       return res.status(404).json({ message: "User not found" });
     }
-
-    // Verificar si es administrador basado en .env
     if (
       email === process.env.ADMIN_EMAIL &&
       password === process.env.ADMIN_PASSWORD
     ) {
       userFound = { _id: "Admin", role: "admin" };
     } else {
-      // Validar la contraseña
       const isMatch = await bcryptjs.compare(password, userFound.password);
 console.log("Password ingresada:", password);
 console.log("Password almacenada:", userFound.password);

@@ -7,6 +7,7 @@ import routOrder from './src/routes/orderRoute.js'
 import routeUser from './src/routes/userRoute.js';
 import routeLog from './src/routes/logRoute.js';
 import routeTochiireg from './src/routes/regtochiiRoute.js';
+import routeLogout from './src/routes/logoutRoute.js'
 
 
 const app = express();
@@ -19,5 +20,6 @@ app.use('/api/order', routOrder)
 app.use('/api/users', routeUser);
 app.use('/api/login',routeLog );
 app.use('/api/register', routeTochiireg);
+app.use('/api/logout',routeLogout );
 
 export default app;
