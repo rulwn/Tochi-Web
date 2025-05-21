@@ -19,7 +19,7 @@ loginController.login = async (req, res) => {
       email === process.env.ADMIN_EMAIL &&
       password === process.env.ADMIN_PASSWORD
     ) {
-      userFound = { _id: "Admin", role: "admin" };
+      userFound = { _id: "Administrador", role: "Administrador" };
     } else {
       const isMatch = await bcryptjs.compare(password, userFound.password);
 console.log("Password ingresada:", password);

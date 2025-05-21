@@ -16,3 +16,5 @@ export const config = {
     cloudinary_api_environment: process.env.CLOUDINARY_API_ENVIRONMENT
   }
 };
+
+export default config;

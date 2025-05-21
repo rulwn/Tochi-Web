@@ -8,6 +8,7 @@ import routeUser from './src/routes/userRoute.js';
 import routeLog from './src/routes/logRoute.js';
 import routeTochiireg from './src/routes/regtochiiRoute.js';
 import routeLogout from './src/routes/logoutRoute.js'
+import cors from "cors"
 
 const corsOptions = {
     origin: 'http://localhost:5173',
