@@ -1,4 +1,13 @@
 import Product from "../models/Products.js";
+import { v2 as cloudinary } from 'cloudinary'
+import config from '../config.js'
+
+cloudinary.config({
+    cloud_name: config.cloudinary.cloudinary_name,
+    api_key: config.cloudinary.cloudinary_api_key,
+    api_secret: config.cloudinary.cloudinary_api_secret
+})
+
 const productsController = {};
 //Get
 productsController.getProducts = async (req, res) => {
@@ -7,10 +16,27 @@ productsController.getProducts = async (req, res) => {
 };
 //Post
 productsController.createProduct = async (req, res) => {
-    const { name, description, price, stock, idCategory, imageUrl } = req.body;
-    const newProduct = new Product({ name, description, price, stock, idCategory, imageUrl });
-    await newProduct.save();
-    res.json({ message: "Product created" });
+    try {
+        const { name, description, price, stock, idCategory } = req.body;
+        let image
+
+        if (req.file) {
+            const result = await cloudinary.upload(req.file.path, {
+                folder: 'tochi',
+                allowed_formats: ['jpg', 'png', 'jpeg']
+            })
+            image = result.secure_url
+        }
+
+
+        const newProduct = new Product({ name, description, price, stock, idCategory, imageUrl: image });
+        await newProduct.save();
+        res.json({ message: "Product created" });
+    }
+    catch (error) {
+        res.status(400).json({ message: error.message })
+
+    }
 };
 //Put
 productsController.updateProduct = async (req, res) => {
