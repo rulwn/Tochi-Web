@@ -15,8 +15,7 @@ const userSchema = new Schema({
     role: { 
         type: String, 
         required: true, 
-        enum: ["admin", "user", "vendor"], 
-        default: "user" 
+        enum: ["Administrador", "Cliente"]
     },
     address: { type: String, required: true, maxLength: 200 },
     imgUrl: { type: String, required: false }, 
