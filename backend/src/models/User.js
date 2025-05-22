@@ -1,5 +1,4 @@
 import { Schema, model } from 'mongoose';
-import bcryptjs from "bcryptjs";
 
 const userSchema = new Schema({
     name: { type: String, required: true, maxLength: 100 },
@@ -22,20 +21,6 @@ const userSchema = new Schema({
 }, {
     timestamps: true,
     strict: true, 
-});
-
-// Middleware para hashear la contraseña antes de guardar
-userSchema.pre("save", async function (next) {
-   
-    if (!this.isModified("password")) return next();
-
-    try {
-        const salt = await bcryptjs.genSalt(10);
-        this.password = await bcryptjs.hash(this.password, salt);
-        next();
-    } catch (error) {
-        return next(error);
-    }
 });
 
 export default model("Users", userSchema, "Users");
