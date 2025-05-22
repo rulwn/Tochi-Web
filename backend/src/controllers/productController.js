@@ -19,9 +19,9 @@ productsController.createProduct = async (req, res) => {
     try {
         const { name, description, price, stock, idCategory } = req.body;
         let image
-
+        
         if (req.file) {
-            const result = await cloudinary.upload(req.file.path, {
+            const result = await cloudinary.uploader.upload(req.file.path, {
                 folder: 'tochi',
                 allowed_formats: ['jpg', 'png', 'jpeg']
             })
