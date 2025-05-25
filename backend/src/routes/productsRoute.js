@@ -10,6 +10,6 @@ router.route('/')
     .get(productsController.getProducts)
     .post(upload.single('imageUrl'), productsController.createProduct);
 router.route('/:id')
-    .put(productsController.updateProduct)
+    .put( upload.single('image'), productsController.updateProduct)
     .delete(productsController.deleteProduct);
 export default router;

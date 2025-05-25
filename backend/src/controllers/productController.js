@@ -38,25 +38,38 @@ productsController.createProduct = async (req, res) => {
 
     }
 };
+
 //Put
 productsController.updateProduct = async (req, res) => {
-    try {
-        const { name, description, price, stock, idCategory, imageUrl } = req.body;
-        const updatedProduct = await Product.findByIdAndUpdate(
-            req.params.id,
-            { name, description, price, stock, idCategory, imageUrl },
-            { new: true }
-        );
+  try {
+    const { name, description, price, stock, idCategory } = req.body;
+    const updates = {};
 
-        if (!updatedProduct) {
-            return res.status(404).json({ message: "Product not found" });
-        }
-
-        res.json({ message: "Product updated", product: updatedProduct });
-    } catch (error) {
-        res.status(500).json({ message: "Error updating product", error: error.message });
+    if (req.file) {
+      const result = await cloudinary.uploader.upload(req.file.path, {
+        folder: 'tochi',
+        allowed_formats: ['jpg', 'png', 'jpeg']
+      });
+      updates.imageUrl = result.secure_url;
     }
-}
+
+    const updatedProduct = await Product.findByIdAndUpdate(
+      req.params.id,
+      updates,
+      { new: true }
+    );
+
+    if (!updatedProduct) {
+      return res.status(404).json({ message: "Producto no encontrado" });
+    }
+
+    res.json({ message: "Producto actualizado", product: updatedProduct });
+  } catch (error) {
+    console.error("Error al actualizar producto:", error);
+    res.status(500).json({ message: "Error al actualizar producto", error: error.message });
+  }
+};
+
 //Delete
 productsController.deleteProduct = async (req, res) => {
     await Product.findByIdAndDelete(req.params.id);
