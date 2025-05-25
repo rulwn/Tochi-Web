@@ -43,7 +43,14 @@ productsController.createProduct = async (req, res) => {
 productsController.updateProduct = async (req, res) => {
   try {
     const { name, description, price, stock, idCategory } = req.body;
-    const updates = {};
+    
+    const updates = {
+      name,
+      description,
+      price,
+      stock,
+      idCategory
+    };
 
     if (req.file) {
       const result = await cloudinary.uploader.upload(req.file.path, {
