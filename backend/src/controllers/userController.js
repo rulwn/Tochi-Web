@@ -1,5 +1,6 @@
 import User from "../models/User.js";
 
+
 const usersController = {};
 
 // Get all users
@@ -11,6 +12,34 @@ usersController.getUsers = async (req, res) => {
         res.status(500).json({ message: "Error retrieving users", error: error.message });
     }
 };
+
+usersController.getCurrentUser = async (req, res) => {
+  try {
+    // El middleware de autenticación ya verificó el token y añadió req.user
+    const user = await User.findById(req.user.id).select('-password -__v -createdAt -updatedAt');
+    
+    if (!user) {
+      return res.status(404).json({ message: "Usuario no encontrado" });
+    }
+
+    // Formatear la respuesta
+    const userData = {
+      id: user._id,
+      name: user.name,
+      email: user.email,
+      imgUrl: user.imgUrl || process.env.DEFAULT_PROFILE_IMAGE,
+      role: user.role,
+      phone: user.phone,
+      address: user.address
+    };
+
+    res.json(userData);
+  } catch (error) {
+    console.error("Error al obtener usuario:", error);
+    res.status(500).json({ message: "Error del servidor" });
+  }
+};
+
 
 // Get user by ID
 usersController.getUserById = async (req, res) => {
