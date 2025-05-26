@@ -2,26 +2,39 @@ import User from "../models/User.js";
 import bcryptjs from "bcryptjs";
 import jsonwebtoken from "jsonwebtoken";
 import dotenv from "dotenv";
+import { v2 as cloudinary } from 'cloudinary';
+import config from '../config.js';
 
 dotenv.config();
+
+cloudinary.config({
+  cloud_name: config.cloudinary.cloudinary_name,
+  api_key: config.cloudinary.cloudinary_api_key,
+  api_secret: config.cloudinary.cloudinary_api_secret
+});
 
 const registerUserController = {};
 
 registerUserController.register = async (req, res) => {
-  // Obtenemos los datos del cuerpo de la petición
-  const { name, email, password, phone, role, address, imgUrl } = req.body;
+  const { name, email, password, phone, role, address } = req.body;
 
   try {
-    // Verificamos si el usuario ya existe
     const existUser = await User.findOne({ email });
     if (existUser) {
       return res.status(400).json({ message: "User already exists" });
     }
 
-    // Hashear la contraseña
     const passwordHash = await bcryptjs.hash(password, 10);
 
-    // Guardamos el nuevo usuario en la base de datos
+    let imgUrl;
+    if (req.file) {
+      const result = await cloudinary.uploader.upload(req.file.path, {
+        folder: 'tochi/users',
+        allowed_formats: ['jpg', 'png', 'jpeg']
+      });
+      imgUrl = result.secure_url;
+    }
+
     const newUser = new User({
       name,
       email,
@@ -34,7 +47,6 @@ registerUserController.register = async (req, res) => {
 
     await newUser.save();
 
-    // Generar token para autenticar al usuario recién registrado
     jsonwebtoken.sign(
       { id: newUser._id, role: newUser.role },
       process.env.JWT_SECRET,
