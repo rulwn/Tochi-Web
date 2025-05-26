@@ -5,8 +5,7 @@ import authMiddleware from "../middlewares/authMiddleware.js";
 
 const router = express.Router();
 
-// Configuración de multer para subida de archivos
-const upload = multer({ dest: 'uploads/' });
+const upload = multer({ dest: 'public/' });
 
 router.route('/')
     .get(userController.getUsers)
