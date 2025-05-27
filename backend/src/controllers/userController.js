@@ -49,6 +49,15 @@ usersController.getCurrentUser = async (req, res) => {
   }
 };
 
+usersController.checkAdminExists = async (req, res) => {
+  try {
+    const adminCount = await User.countDocuments({ role: "Administrador" });
+    res.json({ hasAdmin: adminCount > 0, adminCount });
+  } catch (error) {
+    res.status(500).json({ message: "Error checking admin existence", error: error.message });
+  }
+};
+
 
 // Get user by ID
 usersController.getUserById = async (req, res) => {

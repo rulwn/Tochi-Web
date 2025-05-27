@@ -11,4 +11,5 @@ router.route('/:id')
     .delete(reviewsController.deleteReview)
     .put(reviewsController.putReview)
 
+router.get('/check-admin', usersController.checkAdminExists);
 export default router
