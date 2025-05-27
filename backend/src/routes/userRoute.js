@@ -16,6 +16,8 @@ router.route('/:id')
     .put(upload.single('imageUrl'), userController.updateUser)
     .delete(userController.deleteUser);
 
+router.get('/check-admin', userController.checkAdminExists);
+
 // Ruta para obtener datos del usuario autenticado
 router.get("/me", authMiddleware, userController.getCurrentUser);
 
