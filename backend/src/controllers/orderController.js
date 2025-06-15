@@ -11,10 +11,12 @@ orderController.getOrders = async (req, res) => {
                 path: "cartId",
                 populate: {
                     path: "Products.idProduct",
-                    model: "Product" 
+                    model: "Product",
+                    select: "name description price stock imageUrl"
                 }
             })
             .exec()
+
 
         if (!orders.length) {
             return res.status(404).json({ message: "No orders found" })
@@ -22,23 +24,27 @@ orderController.getOrders = async (req, res) => {
 
         res.json(orders)
     } catch (error) {
+        console.error('Error in getOrders:', error);
         res.status(500).json({ message: "Error retrieving orders", error: error.message })
     }
 }
 
-
-
 orderController.postOrder = async (req, res) => {
     const { cartId, address, payingMetod } = req.body
-    const newOrder = new Order({ cartId, address, payingMetod, state})
-
+    
     try {
         const cart = await Cart.findById(cartId)
         if (!cart) {
             return res.status(404).json({ message: "Cart not found" })
         }
 
-        newOrder.state = "Pendiente"
+        const newOrder = new Order({ 
+            cartId, 
+            address, 
+            payingMetod, 
+            state: "Pendiente"
+        })
+
         const order = await newOrder.save()
         res.status(201).json(order)
     } catch (error) {
@@ -51,7 +57,15 @@ orderController.putOrder = async (req, res) => {
     const { state } = req.body;
 
     try {
-        const putOrder = await Order.findByIdAndUpdate(id, { state }, { new: true });
+        const putOrder = await Order.findByIdAndUpdate(id, { state }, { new: true })
+            .populate({
+                path: "cartId",
+                populate: {
+                    path: "Products.idProduct",
+                    model: "Product",
+                    select: "name description price stock imageUrl"
+                }
+            });
         
         if (!putOrder) {
             return res.status(404).json({ message: "Order not found" });
@@ -63,6 +77,7 @@ orderController.putOrder = async (req, res) => {
     }
 };
 
+// DELETE eliminar orden
 orderController.deleteOrder = async (req, res) => {
     const { id } = req.params;
 
@@ -78,6 +93,5 @@ orderController.deleteOrder = async (req, res) => {
         res.status(500).json({ message: "Error deleting order", error: error.message });
     }
 };
-
 
 export default orderController

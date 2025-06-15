@@ -14,7 +14,7 @@ const userSchema = new Schema({
     role: { 
         type: String, 
         required: true, 
-        enum: ["Administrador", "Cliente"]
+        enum: ["Administrador", "Cliente", "Empleado"]
     },
     address: { type: String, required: true, maxLength: 200 },
     imgUrl: { type: String, required: false }, 

@@ -1,19 +1,24 @@
 import express from 'express';
+import multer from 'multer';
 import userController from '../controllers/userController.js';
 import authMiddleware from "../middlewares/authMiddleware.js";
 
 const router = express.Router();
 
+const upload = multer({ dest: 'public/' });
 
-router.get('/email/:email', authMiddleware, userController.getUserByEmail);
-// Rutas CRUD estándar
-router.route('/users')
-    .get(authMiddleware, userController.getAllUsers)
-    .post(userController.createUser);
+router.route('/')
+    .get(userController.getUsers)
+    .post(upload.single('imageUrl'), userController.createUser);
 
-router.route('/users/:id')
-    .get(authMiddleware, userController.getUserById)
-    .put(authMiddleware, userController.updateUser)
-    .delete(authMiddleware, userController.deleteUser);
+router.route('/:id')
+    .get(userController.getUserById)
+    .put(upload.single('imageUrl'), userController.updateUser)
+    .delete(userController.deleteUser);
+
+router.get('/check-admin', userController.checkAdminExists);
+
+// Ruta para obtener datos del usuario autenticado
+router.get("/me", authMiddleware, userController.getCurrentUser);
 
 export default router;
