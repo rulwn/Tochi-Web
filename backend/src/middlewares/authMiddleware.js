@@ -1,30 +1,26 @@
-import jwt from "jsonwebtoken";
-import dotenv from "dotenv";
-
-dotenv.config();
+import jwt from 'jsonwebtoken';
 
 const authMiddleware = (req, res, next) => {
-  // Obtener token del header, cookie o body
-  const token = req.header('x-auth-token') || req.cookies.authToken || req.body.token;
-  
-  if (!token) {
-    return res.status(401).json({ message: "No hay token, autorización denegada" });
+  const authHeader = req.headers.authorization;
+
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return res.status(401).json({ message: 'Token no proporcionado' });
   }
 
+  const token = authHeader.split(' ')[1];
+
   try {
-    // Verificar token
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    
-    // Añadir usuario al request
+
+    // Asignamos explícitamente los campos necesarios al objeto req.user
     req.user = {
       id: decoded.id,
       role: decoded.role
     };
-    
+
     next();
-  } catch (err) {
-    console.error("Error en el token:", err);
-    res.status(401).json({ message: "Token no válido" });
+  } catch (error) {
+    return res.status(401).json({ message: 'Token inválido' });
   }
 };
 

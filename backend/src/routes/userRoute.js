@@ -4,17 +4,16 @@ import authMiddleware from "../middlewares/authMiddleware.js";
 
 const router = express.Router();
 
-// Rutas para operaciones CRUD generales
-router.route('/')
-    .get(userController.getUsers)
+
+router.get('/email/:email', authMiddleware, userController.getUserByEmail);
+// Rutas CRUD estándar
+router.route('/users')
+    .get(authMiddleware, userController.getAllUsers)
     .post(userController.createUser);
 
-router.route('/:id')
-    .get(userController.getUserById)
-    .put(userController.updateUser)
-    .delete(userController.deleteUser);
-
-// Ruta para obtener datos del usuario autenticado
-router.get("/me", authMiddleware, userController.getCurrentUser);
+router.route('/users/:id')
+    .get(authMiddleware, userController.getUserById)
+    .put(authMiddleware, userController.updateUser)
+    .delete(authMiddleware, userController.deleteUser);
 
 export default router;
