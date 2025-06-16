@@ -191,4 +191,87 @@ usersController.deleteUser = async (req, res) => {
   }
 };
 
+getUserById: async (req, res) => {
+    try {
+      const { id } = req.params;
+      const user = await User.findById(id).select('-password');
+      
+      if (!user) {
+        return res.status(404).json({ message: "Usuario no encontrado" });
+      }
+
+      res.json(user);
+    } catch (error) {
+      console.error('Error al obtener usuario:', error);
+      res.status(500).json({ message: "Error interno del servidor" });
+    }
+  },
+
+  // Actualizar perfil de usuario
+  usersController.updateUserProfile = async (req, res) => {
+    try {
+      const { id } = req.params;
+      const updateData = req.body;
+
+      // Remover campos que no se deben actualizar directamente
+      delete updateData.password;
+      delete updateData.role;
+      delete updateData._id;
+
+      const updatedUser = await User.findByIdAndUpdate(
+        id, 
+        updateData, 
+        { 
+          new: true, 
+          runValidators: true 
+        }
+      ).select('-password');
+
+      if (!updatedUser) {
+        return res.status(404).json({ message: "Usuario no encontrado" });
+      }
+
+      res.json(updatedUser);
+    } catch (error) {
+      console.error('Error al actualizar usuario:', error);
+      res.status(500).json({ message: "Error interno del servidor" });
+    }
+  },
+
+  // Obtener perfil del usuario autenticado
+  usersController.getMyProfile = async (req, res) => {
+    try {
+      // El middleware de autenticación debe haber agregado el usuario a req.user
+      const user = await User.findById(req.user.id).select('-password');
+      
+      if (!user) {
+        return res.status(404).json({ message: "Usuario no encontrado" });
+      }
+
+      res.json(user);
+    } catch (error) {
+      console.error('Error al obtener perfil:', error);
+      res.status(500).json({ message: "Error interno del servidor" });
+    }
+  }
+;
+
+// Middleware para verificar token JWT
+export const authenticateToken = (req, res, next) => {
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
+
+  if (!token) {
+    return res.status(401).json({ message: 'Token de acceso requerido' });
+  }
+
+  jwt.verify(token, process.env.JWT_SECRET, (err, user) => {
+    if (err) {
+      return res.status(403).json({ message: 'Token inválido' });
+    }
+    req.user = user;
+    next();
+  });
+};
+
 export default usersController;

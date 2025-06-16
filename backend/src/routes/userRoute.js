@@ -1,7 +1,7 @@
 import express from 'express';
 import multer from 'multer';
-import userController from '../controllers/userController.js';
-import authMiddleware from "../middlewares/authMiddleware.js";
+import userController, { authenticateToken } from '../controllers/userController.js';
+
 
 const router = express.Router();
 
@@ -14,11 +14,15 @@ router.route('/')
 router.route('/:id')
     .get(userController.getUserById)
     .put(upload.single('imageUrl'), userController.updateUser)
+    .put(authenticateToken, userController.updateUserProfile)
+    .get(authenticateToken, userController.getUserById)
     .delete(userController.deleteUser);
 
 router.get('/check-admin', userController.checkAdminExists);
+router.get('/profile', authenticateToken, userController.getMyProfile);
 
-// Ruta para obtener datos del usuario autenticado
-router.get("/me", authMiddleware, userController.getCurrentUser);
+
+
+
 
 export default router;

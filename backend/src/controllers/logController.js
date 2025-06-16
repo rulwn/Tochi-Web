@@ -38,7 +38,7 @@ const loginController = {
         user: {
           name: userFound.name,
           email: userFound.email,
-          avatar: userFound.avatar // Asegúrate de tener este campo en tu modelo
+          avatar: userFound.imgUrl // Asegúrate de tener este campo en tu modelo
         }
       });
 
