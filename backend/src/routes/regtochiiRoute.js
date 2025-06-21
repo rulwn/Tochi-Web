@@ -1,7 +1,11 @@
 import express from "express";
-import registerTochiiController from "../controllers/registerController.js";
+import multer from "multer";
+import registerUserController from "../controllers/registerController.js"; 
+
 const router = express.Router();
 
-router.route("/").post(registerTochiiController.register);
+const upload = multer({ dest: 'uploads/' });
+
+router.route("/").post(upload.single('imageUrl'), registerUserController.register);
 
 export default router;

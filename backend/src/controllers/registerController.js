@@ -18,6 +18,8 @@ const registerUserController = {};
 registerUserController.register = async (req, res) => {
   const { name, email, password, phone, role, address } = req.body;
 
+  console.log("Datos recibidos:", req.body);
+
   try {
     const existUser = await User.findOne({ email });
     if (existUser) {
@@ -26,7 +28,7 @@ registerUserController.register = async (req, res) => {
 
     const passwordHash = await bcryptjs.hash(password, 10);
 
-    let imgUrl;
+    let imgUrl = null; // Por defecto null
     if (req.file) {
       const result = await cloudinary.uploader.upload(req.file.path, {
         folder: 'tochi/users',
@@ -42,7 +44,7 @@ registerUserController.register = async (req, res) => {
       phone,
       role,
       address,
-      imgUrl,
+      imgUrl, // Será null si no hay imagen
     });
 
     await newUser.save();
