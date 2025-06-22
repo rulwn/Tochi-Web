@@ -1,5 +1,6 @@
 import User from "../models/User.js";
 import { v2 as cloudinary } from 'cloudinary';
+import fs from 'fs';
 import config from '../config.js';
 import bcryptjs from "bcryptjs";
 import jwt from "jsonwebtoken"; // FALTABA ESTA IMPORTACIÓN
@@ -188,36 +189,154 @@ usersController.deleteUser = async (req, res) => {
   }
 };
 
-// Actualizar perfil de usuario
-usersController.updateUserProfile = async (req, res) => {
+// Actualizar usuario (ruta PUT /:id)
+usersController.updateUser = async (req, res) => {
   try {
     const { id } = req.params;
-    const updateData = req.body;
+    const updates = {};
 
-    // Remover campos que no se deben actualizar directamente
-    delete updateData.password;
-    delete updateData.role;
-    delete updateData._id;
+    // Manejar campos básicos
+    if (req.body.name) updates.name = req.body.name;
+    if (req.body.email) updates.email = req.body.email;
+    if (req.body.phone) updates.phone = req.body.phone;
+    if (req.body.address) updates.address = req.body.address;
+    if (req.body.role) updates.role = req.body.role;
+
+    // Manejar imagen
+    if (req.file) {
+      const result = await cloudinary.uploader.upload(req.file.path, {
+        folder: 'tochi/users',
+        allowed_formats: ['jpg', 'png', 'jpeg']
+      });
+      updates.imgUrl = result.secure_url;
+      fs.unlinkSync(req.file.path); // Eliminar archivo temporal
+    }
+
+    // Manejar contraseña si se proporciona
+    if (req.body.password) {
+      updates.password = await bcryptjs.hash(req.body.password, 10);
+    }
 
     const updatedUser = await User.findByIdAndUpdate(
-      id, 
-      updateData, 
-      { 
-        new: true, 
-        runValidators: true 
-      }
+      id,
+      updates,
+      { new: true, runValidators: true }
     ).select('-password');
 
     if (!updatedUser) {
-      return res.status(404).json({ message: "Usuario no encontrado" });
+      return res.status(404).json({ 
+        success: false,
+        message: "User not found" 
+      });
     }
 
-    res.json(updatedUser);
+    res.json({ 
+      success: true,
+      message: "User updated successfully", 
+      user: updatedUser 
+    });
   } catch (error) {
-    console.error('Error al actualizar usuario:', error);
-    res.status(500).json({ message: "Error interno del servidor" });
+    res.status(500).json({ 
+      success: false,
+      message: "Error updating user", 
+      error: error.message 
+    });
   }
 };
+
+// Actualizar perfil de usuario (ruta PUT /profile/:id)
+usersController.updateUserProfile = async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    // Verificar que el usuario solo actualice su propio perfil
+    if (id !== req.user.id) {
+      return res.status(403).json({ 
+        success: false,
+        message: "No tienes permiso para actualizar este perfil" 
+      });
+    }
+
+    const updates = {};
+    
+    // Campos permitidos para actualización desde el perfil
+    if (req.body.name) updates.name = req.body.name;
+    if (req.body.phone) updates.phone = req.body.phone;
+    if (req.body.address) updates.address = req.body.address;
+
+    // Manejar imagen de perfil
+    if (req.file) {
+      try {
+        const result = await cloudinary.uploader.upload(req.file.path, {
+          folder: 'tochi/users',
+          allowed_formats: ['jpg', 'png', 'jpeg']
+        });
+        updates.imgUrl = result.secure_url;
+        
+        // Eliminar archivo temporal
+        if (fs.existsSync(req.file.path)) {
+          fs.unlinkSync(req.file.path);
+        }
+      } catch (uploadError) {
+        console.error('Error uploading to Cloudinary:', uploadError);
+        // Limpiar archivo temporal en caso de error
+        if (req.file && fs.existsSync(req.file.path)) {
+          fs.unlinkSync(req.file.path);
+        }
+        return res.status(500).json({
+          success: false,
+          message: "Error al subir la imagen"
+        });
+      }
+    }
+
+    // Manejar eliminación de imagen
+    if (req.body.removeImage === 'true') {
+      updates.imgUrl = null;
+    }
+
+    // No permitir actualización de email o rol desde el perfil
+    if (req.body.email || req.body.role) {
+      return res.status(403).json({ 
+        success: false,
+        message: "No puedes cambiar tu email o rol desde esta sección" 
+      });
+    }
+
+    const updatedUser = await User.findByIdAndUpdate(
+      id,
+      updates,
+      { new: true, runValidators: true }
+    ).select('-password');
+
+    if (!updatedUser) {
+      return res.status(404).json({ 
+        success: false,
+        message: "User not found" 
+      });
+    }
+
+    res.json({ 
+      success: true,
+      message: "Perfil actualizado correctamente", 
+      user: updatedUser 
+    });
+  } catch (error) {
+    console.error('Error al actualizar perfil:', error);
+    
+    // Limpiar archivo temporal en caso de error
+    if (req.file && fs.existsSync(req.file.path)) {
+      fs.unlinkSync(req.file.path);
+    }
+    
+    res.status(500).json({ 
+      success: false,
+      message: "Error al actualizar perfil", 
+      error: error.message 
+    });
+  }
+};
+
 
 // Obtener perfil del usuario autenticado
 usersController.getMyProfile = async (req, res) => {

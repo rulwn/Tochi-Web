@@ -6,7 +6,6 @@ const router = express.Router();
 
 const upload = multer({ dest: 'public/' });
 
-
 router.get('/check-admin', userController.checkAdminExists);
 router.get('/profile', authenticateToken, userController.getMyProfile);
 
@@ -20,7 +19,8 @@ router.route('/')
     .get(userController.getUsers)
     .post(upload.single('imageUrl'), userController.createUser);
 
-router.put('/profile/:id', authenticateToken, userController.updateUserProfile);
+// AQUÍ ESTÁ EL CAMBIO: Agregar multer a la ruta de perfil
+router.put('/profile/:id', authenticateToken, upload.single('imageUrl'), userController.updateUserProfile);
 
 // Rutas con parámetros (van al final)
 router.route('/:id')
