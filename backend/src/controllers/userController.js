@@ -3,7 +3,9 @@ import { v2 as cloudinary } from 'cloudinary';
 import fs from 'fs';
 import config from '../config.js';
 import bcryptjs from "bcryptjs";
-import jwt from "jsonwebtoken"; // FALTABA ESTA IMPORTACIÓN
+import jwt from "jsonwebtoken";
+import crypto from "crypto";
+import nodemailer from "nodemailer";
 
 cloudinary.config({
   cloud_name: config.cloudinary.cloudinary_name,
@@ -11,7 +13,19 @@ cloudinary.config({
   api_secret: config.cloudinary.cloudinary_api_secret
 });
 
+// Configurar nodemailer - CORRECCIÓN: createTransport (sin "r")
+const transporter = nodemailer.createTransport({
+  service: 'gmail',
+  auth: {
+    user: config.email.email_user,
+    pass: config.email.email_pass
+  }
+});
+
 const usersController = {};
+
+// Almacén temporal para códigos de verificación (en producción usa Redis o base de datos)
+const verificationCodes = new Map();
 
 // Get all users
 usersController.getUsers = async (req, res) => {
@@ -138,60 +152,6 @@ usersController.createUser = async (req, res) => {
 // Update user by ID
 usersController.updateUser = async (req, res) => {
   try {
-    const { name, email, phone, role, address, password } = req.body;
-
-    const updates = {
-      name,
-      email,
-      phone,
-      role,
-      address
-    };
-
-    if (password) {
-      updates.password = await bcryptjs.hash(password, 10);
-    }
-
-    if (req.file) {
-      const result = await cloudinary.uploader.upload(req.file.path, {
-        folder: 'tochi/users',
-        allowed_formats: ['jpg', 'png', 'jpeg']
-      });
-      updates.imgUrl = result.secure_url;
-    }
-
-    const updatedUser = await User.findByIdAndUpdate(
-      req.params.id,
-      updates,
-      { new: true }
-    );
-
-    if (!updatedUser) {
-      return res.status(404).json({ message: "User not found" });
-    }
-
-    res.json({ message: "User updated", user: updatedUser });
-  } catch (error) {
-    res.status(500).json({ message: "Error updating user", error: error.message });
-  }
-};
-
-// Delete user by ID
-usersController.deleteUser = async (req, res) => {
-  try {
-    const deletedUser = await User.findByIdAndDelete(req.params.id);
-    if (!deletedUser) {
-      return res.status(404).json({ message: "User not found" });
-    }
-    res.json({ message: "User deleted", user: deletedUser });
-  } catch (error) {
-    res.status(500).json({ message: "Error deleting user", error: error.message });
-  }
-};
-
-// Actualizar usuario (ruta PUT /:id)
-usersController.updateUser = async (req, res) => {
-  try {
     const { id } = req.params;
     const updates = {};
 
@@ -241,6 +201,19 @@ usersController.updateUser = async (req, res) => {
       message: "Error updating user", 
       error: error.message 
     });
+  }
+};
+
+// Delete user by ID
+usersController.deleteUser = async (req, res) => {
+  try {
+    const deletedUser = await User.findByIdAndDelete(req.params.id);
+    if (!deletedUser) {
+      return res.status(404).json({ message: "User not found" });
+    }
+    res.json({ message: "User deleted", user: deletedUser });
+  } catch (error) {
+    res.status(500).json({ message: "Error deleting user", error: error.message });
   }
 };
 
@@ -336,7 +309,6 @@ usersController.updateUserProfile = async (req, res) => {
     });
   }
 };
-
 
 // Obtener perfil del usuario autenticado
 usersController.getMyProfile = async (req, res) => {
@@ -597,6 +569,434 @@ usersController.setDefaultAddress = async (req, res) => {
     });
   } catch (error) {
     console.error("Error al establecer dirección por defecto:", error);
+    res.status(500).json({
+      success: false,
+      message: "Error del servidor",
+      error: error.message
+    });
+  }
+};
+
+// ===============================
+// FUNCIONES DE RECUPERACIÓN DE CONTRASEÑA
+// ===============================
+
+// Función para enviar email
+const sendResetEmail = async (email, verificationCode, userName = 'Usuario') => {
+  const mailOptions = {
+    from: `"Soporte Tochi" <${config.email.email_user}>`,
+    to: email,
+    subject: '🔐 Código de Recuperación de Contraseña - Tochi',
+    html: `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
+          <style>
+            body { 
+              margin: 0; 
+              padding: 0; 
+              font-family: 'Poppins', sans-serif; 
+              background-color: #f5f5f5;
+              line-height: 1.6;
+            }
+            .email-container { 
+              width: 100%; 
+              min-height: 100vh; 
+              display: flex; 
+              justify-content: center; 
+              align-items: center; 
+              padding: 20px; 
+              box-sizing: border-box;
+            }
+            .email-box {
+              background: white;
+              border-radius: 20px;
+              width: 100%;
+              max-width: 600px;
+              padding: 40px 30px;
+              box-shadow: 0 0 25px rgba(0, 0, 0, 0.1);
+              text-align: center;
+            }
+            .logo-section {
+              margin-bottom: 30px;
+            }
+            .logo-text {
+              font-size: 28px;
+              font-weight: 600;
+              color: #00BF63;
+              margin: 0;
+            }
+            .header-title {
+              font-size: 24px;
+              font-weight: 600;
+              color: #333;
+              margin: 0 0 10px 0;
+            }
+            .header-subtitle {
+              color: #777;
+              font-size: 16px;
+              margin: 0 0 30px 0;
+            }
+            .greeting {
+              font-size: 16px;
+              color: #333;
+              margin-bottom: 25px;
+              text-align: left;
+            }
+            .code-section {
+              background: #f9f9f9;
+              border: 2px solid #00BF63;
+              border-radius: 15px;
+              padding: 30px 20px;
+              margin: 30px 0;
+            }
+            .code-label {
+              font-size: 14px;
+              color: #777;
+              margin-bottom: 15px;
+              font-weight: 600;
+            }
+            .verification-code {
+              font-size: 36px;
+              font-weight: 600;
+              color: #00BF63;
+              letter-spacing: 8px;
+              margin: 10px 0;
+              font-family: 'Courier New', monospace;
+            }
+            .warning-box {
+              background: #fff3cd;
+              border: 1px solid #00BF63;
+              border-radius: 10px;
+              padding: 20px;
+              margin: 25px 0;
+              text-align: left;
+            }
+            .warning-title {
+              font-weight: 600;
+              color: #333;
+              margin-bottom: 10px;
+              display: flex;
+              align-items: center;
+            }
+            .warning-list {
+              margin: 10px 0 0 0;
+              padding-left: 20px;
+              color: #555;
+            }
+            .warning-list li {
+              margin-bottom: 5px;
+            }
+            .help-section {
+              border-top: 1px solid #eee;
+              padding-top: 25px;
+              margin-top: 30px;
+              text-align: left;
+            }
+            .help-title {
+              font-weight: 600;
+              color: #333;
+              margin-bottom: 8px;
+            }
+            .help-text {
+              color: #777;
+              font-size: 14px;
+            }
+            .footer {
+              text-align: center;
+              color: #999;
+              font-size: 12px;
+              margin-top: 30px;
+              padding-top: 20px;
+              border-top: 1px solid #eee;
+            }
+            .tochi-green { color: #00BF63; }
+            .highlight { font-weight: 600; }
+            
+            /* Responsive */
+            @media (max-width: 600px) {
+              .email-box {
+                padding: 30px 20px;
+              }
+              .verification-code {
+                font-size: 28px;
+                letter-spacing: 4px;
+              }
+            }
+          </style>
+        </head>
+        <body>
+          <div class="email-container">
+            <div class="email-box">
+              <!-- Logo/Brand -->
+              <div class="logo-section">
+                <h1 class="logo-text">Tochi</h1>
+              </div>
+              
+              <!-- Header -->
+              <h2 class="header-title">🔐 Recuperación de Contraseña</h2>
+              <p class="header-subtitle">Restablecer el acceso a tu cuenta</p>
+              
+              <!-- Greeting -->
+              <div class="greeting">
+                <p>Hola <span class="highlight">${userName}</span>,</p>
+                <p>Recibimos una solicitud para restablecer la contraseña de tu cuenta Tochi. Para continuar con el proceso, utiliza el siguiente código de verificación:</p>
+              </div>
+              
+              <!-- Verification Code -->
+              <div class="code-section">
+                <div class="code-label">CÓDIGO DE VERIFICACIÓN</div>
+                <div class="verification-code">${verificationCode}</div>
+              </div>
+              
+              <!-- Warning/Instructions -->
+              <div class="warning-box">
+                <div class="warning-title">
+                  ⚠️ Información importante
+                </div>
+                <ul class="warning-list">
+                  <li>Este código <span class="highlight">expira en 10 minutos</span></li>
+                  <li>Solo tienes <span class="highlight">3 intentos</span> para ingresarlo correctamente</li>
+                  <li>Si no solicitaste este cambio, puedes ignorar este email</li>
+                  <li>Puedes solicitar un nuevo código desde la aplicación si este expira</li>
+                </ul>
+              </div>
+              
+              <!-- Help Section -->
+              <div class="help-section">
+                <div class="help-title">¿Necesitas ayuda?</div>
+                <p class="help-text">
+                  Si tienes problemas para restablecer tu contraseña o no solicitaste este cambio, 
+                  no dudes en contactar a nuestro equipo de soporte respondiendo a este email.
+                </p>
+              </div>
+              
+              <!-- Footer -->
+              <div class="footer">
+                <p>
+                  Este email fue enviado automáticamente desde <span class="tochi-green highlight">Tochi App</span><br>
+                  Por favor, no respondas directamente a este email.
+                </p>
+              </div>
+            </div>
+          </div>
+        </body>
+      </html>
+    `
+  };
+
+  try {
+    await transporter.sendMail(mailOptions);
+    return true;
+  } catch (error) {
+    console.error('Error enviando email:', error);
+    return false;
+  }
+};
+
+// 1. Solicitar código de recuperación
+usersController.requestPasswordReset = async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({
+        success: false,
+        message: "El email es requerido"
+      });
+    }
+
+    // Verificar si el usuario existe
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "No existe una cuenta con este email"
+      });
+    }
+
+    // Generar código de 4 dígitos
+    const verificationCode = Math.floor(1000 + Math.random() * 9000).toString();
+    
+    // Guardar el código con expiración de 10 minutos
+    verificationCodes.set(email, {
+      code: verificationCode,
+      expires: Date.now() + 10 * 60 * 1000, // 10 minutos
+      attempts: 0
+    });
+
+    // Enviar email con el código
+    const emailSent = await sendResetEmail(email, verificationCode, user.name);
+    
+    if (!emailSent) {
+      // Si falla el envío del email, eliminar el código
+      verificationCodes.delete(email);
+      return res.status(500).json({
+        success: false,
+        message: "Error al enviar el email. Intenta de nuevo."
+      });
+    }
+
+    console.log(`Código de verificación para ${email}: ${verificationCode}`); // Para debug
+
+    res.json({
+      success: true,
+      message: "Código de verificación enviado a tu email"
+    });
+
+  } catch (error) {
+    console.error("Error al solicitar reset de contraseña:", error);
+    res.status(500).json({
+      success: false,
+      message: "Error del servidor",
+      error: error.message
+    });
+  }
+};
+
+// 2. Verificar código
+usersController.verifyResetCode = async (req, res) => {
+  try {
+    const { email, code } = req.body;
+
+    if (!email || !code) {
+      return res.status(400).json({
+        success: false,
+        message: "Email y código son requeridos"
+      });
+    }
+
+    const storedData = verificationCodes.get(email);
+    
+    if (!storedData) {
+      return res.status(400).json({
+        success: false,
+        message: "No hay código de verificación para este email"
+      });
+    }
+
+    // Verificar si el código ha expirado
+    if (Date.now() > storedData.expires) {
+      verificationCodes.delete(email);
+      return res.status(400).json({
+        success: false,
+        message: "El código ha expirado. Solicita uno nuevo"
+      });
+    }
+
+    // Verificar intentos
+    if (storedData.attempts >= 3) {
+      verificationCodes.delete(email);
+      return res.status(400).json({
+        success: false,
+        message: "Demasiados intentos. Solicita un nuevo código"
+      });
+    }
+
+    // Verificar código
+    if (storedData.code !== code) {
+      storedData.attempts++;
+      return res.status(400).json({
+        success: false,
+        message: "Código incorrecto",
+        attemptsLeft: 3 - storedData.attempts
+      });
+    }
+
+    // Generar token temporal para cambio de contraseña
+    const resetToken = jwt.sign(
+      { email, purpose: 'password-reset' },
+      process.env.JWT_SECRET,
+      { expiresIn: '15m' }
+    );
+
+    // Limpiar el código usado
+    verificationCodes.delete(email);
+
+    res.json({
+      success: true,
+      message: "Código verificado correctamente",
+      resetToken
+    });
+
+  } catch (error) {
+    console.error("Error al verificar código:", error);
+    res.status(500).json({
+      success: false,
+      message: "Error del servidor",
+      error: error.message
+    });
+  }
+};
+
+// 3. Cambiar contraseña
+usersController.resetPassword = async (req, res) => {
+  try {
+    const { resetToken, newPassword, confirmPassword } = req.body;
+
+    if (!resetToken || !newPassword || !confirmPassword) {
+      return res.status(400).json({
+        success: false,
+        message: "Todos los campos son requeridos"
+      });
+    }
+
+    if (newPassword !== confirmPassword) {
+      return res.status(400).json({
+        success: false,
+        message: "Las contraseñas no coinciden"
+      });
+    }
+
+    if (newPassword.length < 6) {
+      return res.status(400).json({
+        success: false,
+        message: "La contraseña debe tener al menos 6 caracteres"
+      });
+    }
+
+    // Verificar token
+    let decoded;
+    try {
+      decoded = jwt.verify(resetToken, process.env.JWT_SECRET);
+    } catch (error) {
+      return res.status(400).json({
+        success: false,
+        message: "Token inválido o expirado"
+      });
+    }
+
+    if (decoded.purpose !== 'password-reset') {
+      return res.status(400).json({
+        success: false,
+        message: "Token inválido"
+      });
+    }
+
+    // Buscar usuario
+    const user = await User.findOne({ email: decoded.email });
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "Usuario no encontrado"
+      });
+    }
+
+    // Actualizar contraseña
+    const hashedPassword = await bcryptjs.hash(newPassword, 10);
+    user.password = hashedPassword;
+    await user.save();
+
+    res.json({
+      success: true,
+      message: "Contraseña actualizada correctamente"
+    });
+
+  } catch (error) {
+    console.error("Error al cambiar contraseña:", error);
     res.status(500).json({
       success: false,
       message: "Error del servidor",

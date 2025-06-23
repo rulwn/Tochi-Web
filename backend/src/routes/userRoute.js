@@ -6,6 +6,12 @@ const router = express.Router();
 
 const upload = multer({ dest: 'public/' });
 
+// Rutas de recuperación de contraseña (van primero)
+router.post('/forgot-password', userController.requestPasswordReset);
+router.post('/verify-code', userController.verifyResetCode);
+router.post('/reset-password', userController.resetPassword);
+
+// Rutas existentes
 router.get('/check-admin', userController.checkAdminExists);
 router.get('/profile', authenticateToken, userController.getMyProfile);
 
