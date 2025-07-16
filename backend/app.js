@@ -10,6 +10,7 @@ import routeTochiireg from './src/routes/regtochiiRoute.js';
 import routeLogout from './src/routes/logoutRoute.js'
 import cors from "cors"
 
+
 import bodyParser from 'body-parser';
 import cookieParser from 'cookie-parser';
 

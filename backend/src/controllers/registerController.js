@@ -18,6 +18,16 @@ const registerUserController = {};
 registerUserController.register = async (req, res) => {
   const { name, email, password, phone, role, address } = req.body;
 
+  console.log("Datos recibidos:", req.body);
+  console.log("Archivo recibido:", req.file);
+
+  // Validación de campos requeridos
+  if (!name || !email || !password || !phone || !address) {
+    return res.status(400).json({ 
+      message: "Todos los campos son requeridos (name, email, password, phone, address)" 
+    });
+  }
+
   try {
     const existUser = await User.findOne({ email });
     if (existUser) {
@@ -26,13 +36,15 @@ registerUserController.register = async (req, res) => {
 
     const passwordHash = await bcryptjs.hash(password, 10);
 
-    let imgUrl;
+    let imgUrl = null; // Por defecto null
     if (req.file) {
+      console.log("Subiendo imagen a Cloudinary...");
       const result = await cloudinary.uploader.upload(req.file.path, {
         folder: 'tochi/users',
         allowed_formats: ['jpg', 'png', 'jpeg']
       });
       imgUrl = result.secure_url;
+      console.log("Imagen subida exitosamente:", imgUrl);
     }
 
     const newUser = new User({
@@ -40,12 +52,13 @@ registerUserController.register = async (req, res) => {
       email,
       password: passwordHash,
       phone,
-      role,
+      role: role || 'Cliente', // Valor por defecto
       address,
-      imgUrl,
+      imgUrl, // Será null si no hay imagen
     });
 
     await newUser.save();
+    console.log("Usuario guardado exitosamente en la base de datos");
 
     jsonwebtoken.sign(
       { id: newUser._id, role: newUser.role },
@@ -53,17 +66,30 @@ registerUserController.register = async (req, res) => {
       { expiresIn: process.env.JWT_EXPIRES_IN },
       (error, token) => {
         if (error) {
-          console.log(error);
+          console.log("Error generando token:", error);
           return res.status(500).json({ message: "Error generating token" });
         }
 
         res.cookie("authToken", token, { httpOnly: true });
-        res.json({ message: "User registered successfully", token });
+        res.json({ 
+          message: "User registered successfully", 
+          token,
+          user: {
+            id: newUser._id,
+            name: newUser.name,
+            email: newUser.email,
+            role: newUser.role,
+            imgUrl: newUser.imgUrl
+          }
+        });
       }
     );
   } catch (error) {
-    console.log(error);
-    res.status(500).json({ message: "Error registering user" });
+    console.log("Error en registro:", error);
+    res.status(500).json({ 
+      message: "Error registering user",
+      error: error.message 
+    });
   }
 };
 
